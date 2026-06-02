@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: candy-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: candy
+      POSTGRES_PASSWORD: candy_password
+      POSTGRES_DB: candy
+    ports:
+      - "5432:5432"
+    volumes:
+      - candy_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  candy_postgres_data:

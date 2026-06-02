@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleCode {
+  ADMIN
+  PARENT
+  STAFF
+}
+
+enum MenuStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  CLOSED
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PAID
+  CANCELLED
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  code        RoleCode @unique
+  title       String
+  description String?
+  users       User[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  roleId    String
+  fullName  String
+  email     String   @unique
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  role             Role              @relation(fields: [roleId], references: [id])
+  children         Student[]         @relation("ParentChildren")
+  createdMenus     Menu[]            @relation("MenuCreator")
+  submittedMenus   Menu[]            @relation("MenuSubmitter")
+  carts            Cart[]
+  orders           Order[]
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  parentId  String
+  fullName  String
+  grade     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent User @relation("ParentChildren", fields: [parentId], references: [id])
+  carts  Cart[]
+  orders Order[]
+}
+
+model Dish {
+  id          String   @id @default(uuid())
+  createdById String?
+  title       String
+  description String?
+  dishType    String
+  weightGrams Int
+  priceCents  Int
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  menuDishes MenuDish[]
+}
+
+model Menu {
+  id              String     @id @default(uuid())
+  createdById      String
+  submittedById    String?
+  title            String
+  weekStartDate    DateTime
+  weekEndDate      DateTime
+  status           MenuStatus @default(DRAFT)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  submittedAt      DateTime?
+
+  createdBy   User          @relation("MenuCreator", fields: [createdById], references: [id])
+  submittedBy User?         @relation("MenuSubmitter", fields: [submittedById], references: [id])
+  settings    MenuSettings?
+  days        MenuDay[]
+  carts       Cart[]
+  orders      Order[]
+}
+
+model MenuSettings {
+  id                 String   @id @default(uuid())
+  menuId             String   @unique
+  editingStartsAt     DateTime
+  editingEndsAt       DateTime
+  orderingStartsAt    DateTime
+  orderingEndsAt      DateTime
+  processingStartsAt  DateTime
+  parentReminderAt    DateTime?
+  kitchenExportReady  Boolean  @default(false)
+  visibleForParents   Boolean  @default(false)
+  editableForAdmin    Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  menu Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+}
+
+model MenuDay {
+  id        String   @id @default(uuid())
+  menuId    String
+  dayDate   DateTime
+  dayOfWeek String
+  isEnabled Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  menu  Menu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  meals Meal[]
+
+  @@unique([menuId, dayDate])
+}
+
+model Meal {
+  id        String   @id @default(uuid())
+  menuDayId String
+  mealType  MealType
+  title     String
+  isEnabled Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  menuDay    MenuDay    @relation(fields: [menuDayId], references: [id], onDelete: Cascade)
+  menuDishes MenuDish[]
+
+  @@unique([menuDayId, mealType])
+}
+
+model MenuDish {
+  id        String   @id @default(uuid())
+  mealId    String
+  dishId    String
+  isEnabled Boolean  @default(true)
+  limitQty  Int?
+  comment   String?
+
+  meal      Meal       @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  dish      Dish       @relation(fields: [dishId], references: [id])
+  cartItems CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([mealId, dishId])
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String
+  studentId String
+  menuId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User       @relation(fields: [userId], references: [id])
+  student Student    @relation(fields: [studentId], references: [id])
+  menu    Menu       @relation(fields: [menuId], references: [id])
+  items   CartItem[]
+
+  @@unique([userId, studentId, menuId])
+}
+
+model CartItem {
+  id          String   @id @default(uuid())
+  cartId      String
+  menuDishId  String
+  quantity    Int      @default(1)
+  confirmed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cart     Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  menuDish MenuDish @relation(fields: [menuDishId], references: [id])
+
+  @@unique([cartId, menuDishId])
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  studentId   String
+  menuId      String
+  status      OrderStatus @default(CONFIRMED)
+  totalCents  Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user    User        @relation(fields: [userId], references: [id])
+  student Student     @relation(fields: [studentId], references: [id])
+  menu    Menu        @relation(fields: [menuId], references: [id])
+  items   OrderItem[]
+}
+
+model OrderItem {
+  id         String @id @default(uuid())
+  orderId    String
+  menuDishId String
+  quantity   Int
+  priceCents Int
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuDish MenuDish @relation(fields: [menuDishId], references: [id])
+}
