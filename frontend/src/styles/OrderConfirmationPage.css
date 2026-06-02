@@ -1,0 +1,21 @@
+.order-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Inter, sans-serif;
+}
+
+.order-page h2 {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+
+.order-page div {
+  margin-bottom: 12px;
+}
+
+.order-page button {
+  margin-right: 12px;
+  padding: 8px 16px;
+  font-size: 16px;
+}
